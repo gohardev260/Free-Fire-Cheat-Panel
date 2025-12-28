@@ -50,7 +50,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Gohar Xiters"), NULL };
     RegisterClassEx(&wc);
     // Use Random Title for the actual Window
-    HWND hwnd = CreateWindow(_T("Gohar Xiters"), windowTitle.c_str(), WS_POPUP, 100, 100, 400, 300, NULL, NULL, wc.hInstance, NULL);
+    std::wstring wWindowTitle(windowTitle.begin(), windowTitle.end());
+    HWND hwnd = CreateWindow(_T("Gohar Xiters"), wWindowTitle.c_str(), WS_POPUP, 100, 100, 400, 300, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
