@@ -231,11 +231,11 @@ void CleanupRenderTarget()
 }
 
 // Win32 message handler
-// extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    // if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-    //     return true;
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+        return true;
 
     switch (msg)
     {

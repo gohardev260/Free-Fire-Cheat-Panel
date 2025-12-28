@@ -8,14 +8,9 @@ This is the **Professional Graphical Version** of the Cheat Panel using DirectX1
 *   **BlueStacks 5** (HD-Player.exe)
 *   **Dear ImGui Library** (You must download this!)
 
-## 📦 Setting Up Dependencies (ImGui)
-Since I cannot download files to your computer, you must add the ImGui library yourself:
-1.  Go to [Dear ImGui GitHub](https://github.com/ocornut/imgui).
-2.  Click **Code -> Download ZIP**.
-3.  Extract the zip.
-4.  Copy the following files into your project's `src/imgui/` folder (create it):
-    *   `imgui.cpp`, `imgui.h`, `imgui_demo.cpp`, `imgui_draw.cpp`, `imgui_internal.h`, `imconfig.h`, `imgui_tables.cpp`, `imgui_widgets.cpp`
-    *   **From `backends/` folder**: `imgui_impl_dx11.cpp`, `imgui_impl_dx11.h`, `imgui_impl_win32.cpp`, `imgui_impl_win32.h`
+## 📦 Dependencies
+All necessary libraries (including ImGui and DirectX headers) are included in this repository. You do not need to download anything extra!
+
 
 ## ☁️ How to Build Online (No Download Required)
 If you don't want to install Visual Studio (10GB+), you can use **GitHub Actions**:
@@ -28,22 +23,16 @@ If you don't want to install Visual Studio (10GB+), you can use **GitHub Actions
 
 ## 🛠️ How to Compile (Local Visual Studio)
 1.  Open Visual Studio 2022.
-2.  Click **"Create a new project"** -> **"Empty Project (C++)"**.
-3.  Name it `GoharXiters` and click Create.
-4.  **Add Your Files**:
-    *   In the **Solution Explorer** (Right Panel), Right-Click on **Source Files** -> **Add** -> **Existing Item**.
-    *   Navigate to your `src` folder.
-    *   Select **ALL** `.cpp` files from:
-        *   `src/` (`main.cpp`)
-        *   `src/memory/` (`Memory.cpp`, `Scanner.cpp`)
-        *   `src/imgui/` (`imgui.cpp`, `imgui_draw.cpp`, `imgui_tables.cpp`, `imgui_widgets.cpp`, `imgui_impl_dx11.cpp`, `imgui_impl_win32.cpp`, `imgui_demo.cpp`)
-    *   Right-Click on **Header Files** -> **Add** -> **Existing Item**.
-    *   Select **ALL** `.h` files from `src/memory/`, `src/gui/`, and `src/imgui/`.
-5.  **Build**:
-    *   Change the Debug/Release dropdown (top bar) to **Release**.
-    *   Change x86/x64 dropdown to **x64**.
-    *   Press **Build -> Build Solution** (or Ctrl+Shift+B).
-    *   Your EXE will appear in `x64/Release/GoharXiters.exe`.
+2.  Click **"Open a local folder"** and select this project folder.
+3.  Visual Studio should detect the `CMakeLists.txt` automatically.
+4.  Select your configuration (e.g., `x64-Release`) from the toolbar.
+5.  Click **Build -> Build All**.
+
+**Alternative: Legacy Solution Method**
+1.  Create a "New Empty Project (C++)".
+2.  Add all files from `src`, `src/gui`, `src/imgui`, `src/memory`, `src/security` to the project.
+3.  Build as **Release x64**.
+
 
 ## 🟢 How to Use
 1.  Open `src/memory/Offsets.h` and update your AOB Patterns (get them from Cheat Engine).
