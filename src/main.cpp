@@ -41,7 +41,7 @@ Memory mem;
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     // SECURITY: Run Anti-Crack Checks (Debug detection + PE Erasure)
-    AntiCrack::RunChecks();
+    // AntiCrack::RunChecks(); // DISABLED: Causes crash on some systems due to PE erasure before window creation
 
     // SECURITY: Generate Random Title
     std::string windowTitle = Security::RandomString(15);
@@ -58,6 +58,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     {
         CleanupDeviceD3D();
         UnregisterClass(_T("Gohar Xiters"), wc.hInstance);
+        MessageBox(NULL, _T("Failed to create Direct3D Device."), _T("Error"), MB_ICONERROR);
         return 1;
     }
 
