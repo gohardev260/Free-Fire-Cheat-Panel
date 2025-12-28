@@ -14,7 +14,7 @@ jobs:
 
     - name: Compile Cheat Panel
       run: |
-        cl.exe /nologo /EHsc /std:c++17 /O2 /DUNICODE /D_UNICODE /I src src/main.cpp src/memory/*.cpp src/imgui/*.cpp /Fe:GoharXiters.exe /link d3d11.lib d3dcompiler.lib dwmapi.lib dxgi.lib user32.lib kernel32.lib advapi32.lib
+        cl.exe /nologo /EHsc /std:c++17 /O2 /DUNICODE /D_UNICODE /I src src/main.cpp src/memory/*.cpp src/imgui/*.cpp /Fe:GoharXiters.exe /link /SUBSYSTEM:WINDOWS d3d11.lib d3dcompiler.lib dwmapi.lib dxgi.lib user32.lib kernel32.lib advapi32.lib
       shell: cmd
 
     - name: Upload EXE
