@@ -1,7 +1,4 @@
-#define _WIN32_WINNT 0x0601
 #include <Windows.h>
-#include <dwmapi.h>
-#pragma comment(lib, "dwmapi.lib")
 #include <d3d11.h>
 #include <tchar.h>
 #include <iostream>
@@ -34,6 +31,10 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+// Forward declarations for UI Helpers (FIXED)
+void DragWindow(HWND hwnd);
+bool ToggleButton(const char* label, bool* v);
+
 // Global Logic State
 bool bAimbot = false;
 bool bScope = false;
@@ -44,7 +45,7 @@ Memory mem;
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     // SECURITY: Run Anti-Crack Checks (Debug detection + PE Erasure)
-    // AntiCrack::RunChecks(); // DISABLED: Causes crash on some systems due to PE erasure before window creation
+    AntiCrack::RunChecks();
 
     // SECURITY: Generate Random Title
     std::string windowTitle = Security::RandomString(15);
@@ -53,15 +54,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Gohar Xiters"), NULL };
     RegisterClassEx(&wc);
     // Use Random Title for the actual Window
-    std::wstring wWindowTitle(windowTitle.begin(), windowTitle.end());
-    HWND hwnd = CreateWindow(_T("Gohar Xiters"), wWindowTitle.c_str(), WS_POPUP, 100, 100, 400, 300, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = CreateWindow(_T("Gohar Xiters"), windowTitle.c_str(), WS_POPUP, 100, 100, 400, 300, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
     {
         CleanupDeviceD3D();
         UnregisterClass(_T("Gohar Xiters"), wc.hInstance);
-        MessageBox(NULL, _T("Failed to create Direct3D Device."), _T("Error"), MB_ICONERROR);
         return 1;
     }
 
@@ -69,38 +68,15 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
-    // DWM Transparency
-    MARGINS margins = { -1 };
-    DwmExtendFrameIntoClientArea(hwnd, &margins);
-
     // Setup Dear ImGui context
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
-    
-    // --- MODERN THEME SETUP ---
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.WindowRounding = 12.0f;
-    style.ChildRounding = 8.0f;
-    style.FrameRounding = 6.0f;
-    style.GrabRounding = 6.0f;
-    style.PopupRounding = 8.0f;
-    style.ScrollbarRounding = 9.0f;
-    style.WindowBorderSize = 0.0f;
-    style.FrameBorderSize = 0.0f;
-    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f); // Dark translucent
-    style.Colors[ImGuiCol_Border] = ImVec4(0.1f, 0.1f, 0.1f, 0.5f);
-    style.Colors[ImGuiCol_Header] = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
-    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
-    style.Colors[ImGuiCol_Button] = ImVec4(0.12f, 0.12f, 0.12f, 1.0f);
-    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.18f, 0.18f, 0.18f, 1.0f);
-    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.0f, 0.7f, 0.0f, 1.0f); // Green Click
-    style.Colors[ImGuiCol_Text] = ImVec4(0.9f, 0.9f, 0.9f, 1.0f);
 
     // Setup Platform/Renderer backends
-    ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+    ImGui_ImplWin32::Init(hwnd);
+    ImGui_ImplDX11::Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-    // Memory Init Thread
+    // Memory Init Thread (Non-blocking)
     std::thread memThread([]() {
         while (!mem.Attach(Offsets::GAME_PROCESS_NAME)) { Sleep(1000); }
     });
@@ -120,113 +96,94 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         }
         if (done) break;
 
-        ImGui_ImplDX11_NewFrame();
-        ImGui_ImplWin32_NewFrame();
+        // Start the Dear ImGui frame
+        ImGui_ImplDX11::NewFrame();
+        ImGui_ImplWin32::NewFrame();
         ImGui::NewFrame();
 
-        // --- MODERN UI LAYOUT ---
-        ImGui::SetNextWindowSize(ImVec2(500, 350));
-        // Using "Gohar Xiters" as ID but hiding title bar for custom header
-        ImGui::Begin("Gohar Xiters", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        // --- DRAW PANEL ---
+        ImGui::SetNextWindowPos(ImVec2(0,0)); 
+        ImGui::SetNextWindowSize(ImVec2(400,300));
+        // REMOVED: ImGuiWindowFlags_TopMost (Does not exist in standard ImGui)
+        // ADDED: NoDecoration to make it look like a seamless generic window
+        ImGui::Begin("Gohar Xiters", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBackground); 
 
-        // 1. HEADER (Draggable)
-        ImVec2 p = ImGui::GetCursorScreenPos();
-        ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + 500, p.y + 50), IM_COL32(20, 20, 20, 255), 12.0f, ImDrawFlags_RoundCornersTop);
+        // Drag Handler
+        // Calling DragWindow to allow moving the WS_POPUP window by clicking anywhere or on header
+        DragWindow(hwnd);
+
+        ImGui::TextColored({ 0, 1, 0, 1 }, "Gohar Xiters - Developed by Gohar Rehman");
         
-        ImGui::SetCursorPos(ImVec2(20, 15));
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "[ GOHAR XITERS ]");
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Free Fire External");
+        // Minimize / Close Buttons at Local Cursor Pos
+        ImGui::BeginGroup();
+            if (ImGui::Button("_", ImVec2(30, 20))) { ShowWindow(hwnd, SW_MINIMIZE); }
+            ImGui::SameLine();
+            if (ImGui::Button("X", ImVec2(30, 20))) { done = true; }
+        ImGui::EndGroup();
 
-        // Close Button
-        ImGui::SetCursorPos(ImVec2(460, 12));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
-        if (ImGui::Button("X", ImVec2(30, 30))) done = true;
-        ImGui::PopStyleColor();
+        ImGui::Text("Status: %s", (mem.processId > 0) ? "CONNECTED" : "WAITING...");
+        ImGui::Separator();
+        ImGui::Spacing();
 
-        // Drag Logic: If mouse is in header and clicked
-        if (ImGui::IsMouseHoveringRect(p, ImVec2(p.x + 450, p.y + 50)) && ImGui::IsMouseClicked(0)) {
-             DragWindow(hwnd);
+        // CHEATS - Using Custom ToggleButton
+        if (ToggleButton("Aimbot", &bAimbot)) {
+             GuiStyles::AddToast(bAimbot ? "Aimbot ON" : "Aimbot OFF", bAimbot ? 1 : 0);
         }
+        ImGui::SameLine(); ImGui::Text("Aimbot");
 
-        // 2. CONTENT AREA
-        ImGui::SetCursorPos(ImVec2(20, 70));
-        ImGui::BeginChild("Content", ImVec2(460, 250), false);
-            
-            // STATUS CARD
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
-            ImGui::BeginChild("StatusCard", ImVec2(0, 40), true);
-                ImGui::SetCursorPos(ImVec2(10, 10));
-                if (mem.processId > 0) {
-                    ImGui::TextColored(ImVec4(0,1,0,1), "STATUS: CONNECTED");
+        if (ToggleButton("Sniper Scope", &bScope)) {
+             GuiStyles::AddToast(bScope ? "Scope ON" : "Scope OFF", bScope ? 1 : 0);
+        }
+         ImGui::SameLine(); ImGui::Text("Scope");
+
+        if (ToggleButton("Quick Switch", &bQuickSwitch)) {
+             GuiStyles::AddToast(bQuickSwitch ? "Quick Switch ON" : "Quick Switch OFF", bQuickSwitch ? 1 : 0);
+        }
+         ImGui::SameLine(); ImGui::Text("Quick Switch");
+
+
+        // DRAW TOASTS
+        if (!GuiStyles::toasts.empty()) {
+            float yPos = 250.0f; // Start from bottom
+            for (auto it = GuiStyles::toasts.begin(); it != GuiStyles::toasts.end(); ) {
+                // FIXED: Flags usage
+                ImGui::SetNextWindowPos(ImVec2(20, yPos));
+                ImGui::SetNextWindowSize(ImVec2(200, 40));
+                ImGui::Begin(("Toast" + it->message).c_str(), 
+                    NULL, 
+                    ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground
+                );
+                
+                ImVec4 textColor = (it->type == 1) ? ImVec4(0,1,0,1) : ImVec4(1,1,1,1);
+                ImGui::TextColored(textColor, it->message.c_str());
+                ImGui::End();
+
+                yPos -= 50.0f; // Stack Upwards
+                it->timer += ImGui::GetIO().DeltaTime;
+                
+                if (it->timer > it->duration) {
+                    it = GuiStyles::toasts.erase(it);
                 } else {
-                    ImGui::TextColored(ImVec4(1,0,0,1), "STATUS: WAITING FOR GAME...");
+                    ++it;
                 }
-            ImGui::EndChild();
-            ImGui::PopStyleColor();
-
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-
-            // FEATURE TOGGLES (Using Custom Toggle)
-            if (ToggleButton("  Aimbot Headshot", &bAimbot)) {
-                 GuiStyles::AddToast(bAimbot ? "Aimbot Enabled" : "Aimbot Disabled", bAimbot ? 1 : 0);
             }
-            ImGui::Spacing();
-            if (ToggleButton("  Sniper Scope (No Recoil)", &bScope)) {
-                 GuiStyles::AddToast(bScope ? "Scope Hack Enabled" : "Scope Hack Disabled", bScope ? 1 : 0);
-            }
-            ImGui::Spacing();
-            if (ToggleButton("  Quick Switch", &bQuickSwitch)) {
-                 GuiStyles::AddToast(bQuickSwitch ? "Quick Switch Enabled" : "Quick Switch Disabled", bQuickSwitch ? 1 : 0);
-            }
-
-        ImGui::EndChild();
+        }
+        
         ImGui::End();
 
-        // 3. TOAST NOTIFICATIONS (Overlay)
-        // Draw these in a separate window on top of everything
-        if (!GuiStyles::toasts.empty()) {
-            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(GetSystemMetrics(SM_CXSCREEN)) - 220, static_cast<float>(GetSystemMetrics(SM_CYSCREEN)) - 100)); // Bottom Right of SCREEN
-            ImGui::SetNextWindowSize(ImVec2(200, 300)); // Tall invisible window to stack toasts
-            ImGui::Begin("##Toasts", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_TopMost);
-            
-            float yOffset = 0.0f;
-            for (auto it = GuiStyles::toasts.begin(); it != GuiStyles::toasts.end(); ) {
-                ImGui::SetCursorPos(ImVec2(0, 250 - yOffset)); // Stack upwards
-                ImVec4 toastColor = (it->type == 1) ? ImVec4(0, 0.8f, 0, 0.9f) : ImVec4(0.15f, 0.15f, 0.15f, 0.9f);
-                
-                ImGui::PushStyleColor(ImGuiCol_ChildBg, toastColor);
-                ImGui::BeginChild(("Toast" + std::to_string(yOffset)).c_str(), ImVec2(180, 40), true);
-                    ImGui::SetCursorPos(ImVec2(10, 10));
-                    ImGui::Text("%s", it->message.c_str());
-                ImGui::EndChild();
-                ImGui::PopStyleColor();
-
-                it->timer += ImGui::GetIO().DeltaTime;
-                yOffset += 50.0f;
-
-                if (it->timer > it->duration)
-                    it = GuiStyles::toasts.erase(it);
-                else
-                    ++it;
-            }
-            ImGui::End();
-        }
-
+        // Rendering
         ImGui::Render();
-        const float clear_color_with_alpha[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        const float clear_color_with_alpha[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // Transparent
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
-        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha); // Transparent Clear
-        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
+        ImGui_ImplDX11::RenderDrawData(ImGui::GetDrawData());
 
-        g_pSwapChain->Present(1, 0);
+        g_pSwapChain->Present(1, 0); // Present with vsync
     }
 
     // Cleanup
-    ImGui_ImplDX11_Shutdown();
-    ImGui_ImplWin32_Shutdown();
+    ImGui_ImplDX11::Shutdown();
+    ImGui_ImplWin32::Shutdown();
     ImGui::DestroyContext();
 
     CleanupDeviceD3D();
@@ -235,6 +192,56 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     return 0;
 }
+
+// =======================================================================================
+// UI HELPER IMPLEMENTATIONS (FIXED)
+// =======================================================================================
+
+// Drag Window Logic (For WS_POPUP)
+void DragWindow(HWND hwnd)
+{
+    // If mouse is left-clicked and dragging on the background
+    if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
+    {
+        // Use WinAPI to drag the window (Best Performance)
+        ReleaseCapture();
+        SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+    }
+}
+
+// Custom Toggle Button (Apple/iOS Style)
+// Uses Standard ImGui API (InvisibleButton + DrawList)
+bool ToggleButton(const char* label, bool* v)
+{
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    float height = ImGui::GetFrameHeight();
+    float width = height * 1.55f;
+    float radius = height * 0.50f;
+
+    // Invisible Button catches the click
+    ImGui::InvisibleButton(label, ImVec2(width, height));
+    if (ImGui::IsItemClicked())
+        *v = !*v;
+
+    float t = *v ? 1.0f : 0.0f; // Simple state (Animation removed for stability)
+
+    // Colors
+    ImU32 col_bg;
+    if (ImGui::IsItemHovered())
+        col_bg = *v ? IM_COL32(0, 255, 0, 255) : IM_COL32(100, 100, 100, 255);
+    else
+        col_bg = *v ? IM_COL32(0, 200, 0, 255) : IM_COL32(70, 70, 70, 255);
+
+    // Draw Background
+    draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
+    // Draw Knob
+    draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 255));
+
+    return *v;
+}
+
 
 // Helper functions (DirectX boilerplate)
 bool CreateDeviceD3D(HWND hWnd)
@@ -289,52 +296,10 @@ void CleanupRenderTarget()
 
 // Win32 message handler
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-// Custom Drag Implementation: Helper to move window
-void DragWindow(HWND hwnd) {
-    ReleaseCapture();
-    SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
-}
-
-// MODERN TOGGLE WIDGET
-bool ToggleButton(const char* label, bool* v)
-{
-    ImVec2 p = ImGui::GetCursorScreenPos();
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-    float height = ImGui::GetFrameHeight();
-    float width = height * 1.55f;
-    float radius = height * 0.50f;
-
-    ImGui::InvisibleButton(label, ImVec2(width, height));
-    if (ImGui::IsItemClicked())
-        *v = !*v;
-
-    float t = *v ? 1.0f : 0.0f;
-
-    ImGuiContext& g = *GImGui;
-    float ANIM_SPEED = 0.08f;
-    if (g.LastActiveId == g.CurrentWindow->GetID(label)) // && g.LastActiveIdTimer < ANIM_SPEED)
-        t = *v ? 1.0f : 0.0f; // Simple instant for now, can perform smooth anim with state storage
-
-    ImU32 col_bg;
-    if (ImGui::IsItemHovered())
-        col_bg = ImGui::GetColorU32(*v ? ImVec4(0.0f, 0.88f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
-    else
-        col_bg = ImGui::GetColorU32(*v ? ImVec4(0.0f, 0.78f, 0.0f, 1.0f) : ImVec4(0.2f, 0.2f, 0.2f, 1.0f));
-
-    draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
-    draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 255));
-    
-    ImGui::SameLine();
-    ImGui::Text("%s", label);
-    return *v;
-}
-
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-        return true;
+     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+         return true;
 
     switch (msg)
     {
