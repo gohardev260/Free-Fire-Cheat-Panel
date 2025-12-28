@@ -69,8 +69,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     ImGui::StyleColorsDark();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplWin32::Init(hwnd);
-    ImGui_ImplDX11::Init(g_pd3dDevice, g_pd3dDeviceContext);
+    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
     // Memory Init Thread (Non-blocking)
     std::thread memThread([]() {
@@ -94,8 +94,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         if (done) break;
 
         // Start the Dear ImGui frame
-        ImGui_ImplDX11::NewFrame();
-        ImGui_ImplWin32::NewFrame();
+        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
         // --- DRAW PANEL ---
@@ -162,14 +162,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         const float clear_color_with_alpha[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // Transparent
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
-        ImGui_ImplDX11::RenderDrawData(ImGui::GetDrawData()); // Should use GetDrawData() result
+        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // Should use GetDrawData() result
 
         g_pSwapChain->Present(1, 0); // Present with vsync
     }
 
     // Cleanup
-    ImGui_ImplDX11::Shutdown();
-    ImGui_ImplWin32::Shutdown();
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 
     CleanupDeviceD3D();
