@@ -36,9 +36,15 @@ void DragWindow(HWND hwnd);
 bool ToggleButton(const char* label, bool* v);
 
 // Global Logic State
-bool bAimbot = false;
-bool bScope = false;
-bool bQuickSwitch = false;
+bool bAutoLock = false; // F1
+bool bRecoil = false;   // F2
+bool bMagicBullet = false; // Mouse4
+bool bInstantSwitch = false; // F3
+bool bQuickScope = false; // CapsLock
+bool bEspMaster = true; // Num1
+bool bEspSkeleton = true; // Num2
+bool bEspTags = false; // Num3
+bool bEspLoot = true; // Num4
 Memory mem;
 
 // Main Code
@@ -103,69 +109,95 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
         // --- DRAW PANEL ---
         ImGui::SetNextWindowPos(ImVec2(0,0)); 
-        ImGui::SetNextWindowSize(ImVec2(400,300));
-        // REMOVED: ImGuiWindowFlags_TopMost (Does not exist in standard ImGui)
-        // ADDED: NoDecoration to make it look like a seamless generic window
-        ImGui::Begin("Gohar Xiters", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBackground); 
+        ImGui::SetNextWindowSize(ImVec2(450, 400)); // Increased size for new content
+        ImGui::Begin("Gohar Panel", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBackground); 
 
-        // Drag Handler
-        // Calling DragWindow to allow moving the WS_POPUP window by clicking anywhere or on header
-        DragWindow(hwnd);
-
-        ImGui::TextColored({ 0, 1, 0, 1 }, "Gohar Xiters - Developed by Gohar Rehman");
+        // 1. Header Section
+        DragWindow(hwnd); // Allow dragging
         
-        // Minimize / Close Buttons at Local Cursor Pos
-        ImGui::BeginGroup();
-            if (ImGui::Button("_", ImVec2(30, 20))) { ShowWindow(hwnd, SW_MINIMIZE); }
-            ImGui::SameLine();
-            if (ImGui::Button("X", ImVec2(30, 20))) { done = true; }
-        ImGui::EndGroup();
+        // Title Row
+        ImGui::TextColored(ImVec4(1, 1, 1, 1), "GOHAR"); ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.6f, 0.0f, 1.0f, 1.0f), "PANEL"); // Purple
+        ImGui::SameLine();
+        ImGui::TextDisabled("developed by Gohar Rehman");
+        
+        // Window Controls (Right Align)
+        ImGui::SameLine(ImGui::GetWindowWidth() - 60);
+        if (ImGui::Button("-", ImVec2(25, 20))) ShowWindow(hwnd, SW_MINIMIZE);
+        ImGui::SameLine();
+        if (ImGui::Button("x", ImVec2(25, 20))) done = true;
 
-        ImGui::Text("Status: %s", (mem.processId > 0) ? "CONNECTED" : "WAITING...");
-        ImGui::Separator();
+        // Social Buttons
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
+        if (ImGui::Button("[Discord]")) { ShellExecute(0, 0, L"https://discord.gg/example", 0, 0 , SW_SHOW); }
+        ImGui::SameLine();
+        if (ImGui::Button("[WhatsApp]")) { ShellExecute(0, 0, L"https://whatsapp.com/example", 0, 0 , SW_SHOW); }
+
         ImGui::Spacing();
+        ImGui::Separator();
 
-        // CHEATS - Using Custom ToggleButton
-        if (ToggleButton("Aimbot", &bAimbot)) {
-             GuiStyles::AddToast(bAimbot ? "Aimbot ON" : "Aimbot OFF", bAimbot ? 1 : 0);
-        }
-        ImGui::SameLine(); ImGui::Text("Aimbot");
+        // 2. System Monitor
+        ImGui::BeginChild("SystemMonitor", ImVec2(0, 35), true);
+        ImGui::Text("SYSTEM MONITOR");
+        ImGui::SameLine(200);
+        ImGui::Text("Emulator State: "); ImGui::SameLine();
+        if (mem.processId > 0) ImGui::TextColored(ImVec4(0, 1, 0, 1), "[ ONLINE ]");
+        else ImGui::TextColored(ImVec4(1, 0, 0, 1), "[ OFFLINE ]");
+        ImGui::EndChild();
 
-        if (ToggleButton("Sniper Scope", &bScope)) {
-             GuiStyles::AddToast(bScope ? "Scope ON" : "Scope OFF", bScope ? 1 : 0);
-        }
-         ImGui::SameLine(); ImGui::Text("Scope");
+        // 3. Scrollable Feature Area
+        ImGui::BeginChild("Features", ImVec2(0, 0), true); // Fill remaining space
 
-        if (ToggleButton("Quick Switch", &bQuickSwitch)) {
-             GuiStyles::AddToast(bQuickSwitch ? "Quick Switch ON" : "Quick Switch OFF", bQuickSwitch ? 1 : 0);
-        }
-         ImGui::SameLine(); ImGui::Text("Quick Switch");
+            // SECTION: HEADSHOT & WEAPON CONFIG
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), ":: HEADSHOT & WEAPON CONFIG ::");
+            ImGui::Separator();
+            if (ToggleButton("[ F1    ]   Auto-Lock Precision", &bAutoLock))   GuiStyles::AddToast("Auto-Lock Toggled", 1);
+            if (ToggleButton("[ F2    ]   Recoil Control System", &bRecoil))     GuiStyles::AddToast("Recoil Control Toggled", 1);
+            if (ToggleButton("[ MOUSE4]   Magic Bullet Tracking", &bMagicBullet)) GuiStyles::AddToast("Magic Bullet Toggled", 1);
+            ImGui::Spacing();
 
+            // SECTION: SNIPER ASSIST
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), ":: SNIPER ASSIST ::");
+            ImGui::Separator();
+            if (ToggleButton("[ F3    ]   Instant Switch Logic", &bInstantSwitch)) GuiStyles::AddToast("Instant Switch Toggled", 1);
+            if (ToggleButton("[ CAPSLK]   Quick Scope Delay Fix", &bQuickScope))   GuiStyles::AddToast("Quick Scope Toggled", 1);
+            ImGui::Spacing();
+
+            // SECTION: VISUALS & ESP
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), ":: VISUALS & ESP ::");
+            ImGui::Separator();
+            if (ToggleButton("[ NUM_1 ]   Master ESP Toggle", &bEspMaster))      GuiStyles::AddToast("ESP Master Toggled", 1);
+            if (ToggleButton("[ NUM_2 ]   Skeleton Wireframe", &bEspSkeleton))   GuiStyles::AddToast("Skeleton ESP Toggled", 1);
+            if (ToggleButton("[ NUM_3 ]   Distance Tags & Health", &bEspTags))   GuiStyles::AddToast("Tags ESP Toggled", 1);
+            if (ToggleButton("[ NUM_4 ]   Loot & Item ESP", &bEspLoot))          GuiStyles::AddToast("Loot ESP Toggled", 1);
+
+        ImGui::EndChild();
+
+        // Keybind Logic (Poll Keys)
+        if (GetAsyncKeyState(VK_F1) & 1) { bAutoLock = !bAutoLock; GuiStyles::AddToast(bAutoLock ? "Auto-Lock ON" : "Auto-Lock OFF", bAutoLock ? 1 : 0); }
+        if (GetAsyncKeyState(VK_F2) & 1) { bRecoil = !bRecoil; GuiStyles::AddToast(bRecoil ? "Recoil ON" : "Recoil OFF", bRecoil ? 1 : 0); }
+        if (GetAsyncKeyState(VK_F3) & 1) { bInstantSwitch = !bInstantSwitch; GuiStyles::AddToast(bInstantSwitch ? "Switch ON" : "Switch OFF", bInstantSwitch ? 1 : 0); }
+        if (GetAsyncKeyState(VK_XBUTTON1) & 1) { bMagicBullet = !bMagicBullet; GuiStyles::AddToast(bMagicBullet ? "Magic Bullet ON" : "Magic Bullet OFF", bMagicBullet ? 1 : 0); } // Mouse4
+        if (GetAsyncKeyState(VK_CAPITAL) & 1) { bQuickScope = !bQuickScope; GuiStyles::AddToast(bQuickScope ? "Quick Scope ON" : "Quick Scope OFF", bQuickScope ? 1 : 0); }
+        if (GetAsyncKeyState(VK_NUMPAD1) & 1) { bEspMaster = !bEspMaster; }
+        if (GetAsyncKeyState(VK_NUMPAD2) & 1) { bEspSkeleton = !bEspSkeleton; }
+        if (GetAsyncKeyState(VK_NUMPAD3) & 1) { bEspTags = !bEspTags; }
+        if (GetAsyncKeyState(VK_NUMPAD4) & 1) { bEspLoot = !bEspLoot; }
 
         // DRAW TOASTS
         if (!GuiStyles::toasts.empty()) {
-            float yPos = 250.0f; // Start from bottom
+            float yPos = 350.0f; // Adjusted for taller window
             for (auto it = GuiStyles::toasts.begin(); it != GuiStyles::toasts.end(); ) {
-                // FIXED: Flags usage
                 ImGui::SetNextWindowPos(ImVec2(20, yPos));
-                ImGui::SetNextWindowSize(ImVec2(200, 40));
-                ImGui::Begin(("Toast" + it->message).c_str(), 
-                    NULL, 
-                    ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground
-                );
-                
-                ImVec4 textColor = (it->type == 1) ? ImVec4(0,1,0,1) : ImVec4(1,1,1,1);
-                ImGui::TextColored(textColor, it->message.c_str());
+                ImGui::SetNextWindowSize(ImVec2(250, 35));
+                ImGui::Begin(("Toast" + it->message).c_str(), NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground);
+                ImGui::TextColored(ImVec4(0, 1, 1, 1), it->message.c_str()); // Blue Toast as requested
                 ImGui::End();
-
-                yPos -= 50.0f; // Stack Upwards
-                it->timer += ImGui::GetIO().DeltaTime;
                 
-                if (it->timer > it->duration) {
-                    it = GuiStyles::toasts.erase(it);
-                } else {
-                    ++it;
-                }
+                yPos -= 40.0f;
+                it->timer += ImGui::GetIO().DeltaTime;
+                if (it->timer > it->duration) it = GuiStyles::toasts.erase(it);
+                else ++it;
             }
         }
         
@@ -209,37 +241,37 @@ void DragWindow(HWND hwnd)
     }
 }
 
-// Custom Toggle Button (Apple/iOS Style)
-// Uses Standard ImGui API (InvisibleButton + DrawList)
+// Custom Toggle Button (Gohar Panel Style)
+// Renders: [ Label ........................... [ STATUS ] ]
 bool ToggleButton(const char* label, bool* v)
 {
     ImVec2 p = ImGui::GetCursorScreenPos();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     float height = ImGui::GetFrameHeight();
-    float width = height * 1.55f;
-    float radius = height * 0.50f;
+    float width = ImGui::GetContentRegionAvail().x;
 
-    // Invisible Button catches the click
     ImGui::InvisibleButton(label, ImVec2(width, height));
     if (ImGui::IsItemClicked())
         *v = !*v;
 
-    float t = *v ? 1.0f : 0.0f; // Simple state (Animation removed for stability)
-
     // Colors
-    ImU32 col_bg;
-    if (ImGui::IsItemHovered())
-        col_bg = *v ? IM_COL32(0, 255, 0, 255) : IM_COL32(100, 100, 100, 255);
-    else
-        col_bg = *v ? IM_COL32(0, 200, 0, 255) : IM_COL32(70, 70, 70, 255);
+    ImU32 text_col = *v ? IM_COL32(160, 32, 240, 255) : IM_COL32(100, 100, 100, 255); // Purple vs Grey
+    ImU32 status_col = *v ? IM_COL32(160, 32, 240, 255) : IM_COL32(80, 80, 80, 255);
+    const char* status_text = *v ? "[ ON  ]" : "[ OFF ]";
 
-    // Draw Background
-    draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
-    // Draw Knob
-    draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 255));
+    // Draw Label
+    draw_list->AddText(ImVec2(p.x + 5, p.y + 2), text_col, label);
 
-    return *v;
+    // Draw Status (Right Aligned)
+    float statusWidth = 60.0f; // Approx width of [ ON ]
+    draw_list->AddText(ImVec2(p.x + width - statusWidth, p.y + 2), status_col, status_text);
+
+    return *v; // Return true if state matches? No, standard returns current state usually, but Checkbox returns 'changed'.
+               // Here we return *v just for creating if condition, but standard ImGui::Checkbox returns true if CHANGED.
+               // My usage in main.cpp is: if (ToggleButton(...)) AddToast. So I should return 'hovered && clicked'.
+    // Fix return value to be 'Pressed'
+    return ImGui::IsItemClicked(); 
 }
 
 
