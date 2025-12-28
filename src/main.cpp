@@ -59,8 +59,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     // Create Application Window
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("Gohar Xiters"), NULL };
     RegisterClassEx(&wc);
-    // Use Random Title for the actual Window
-    HWND hwnd = CreateWindow(_T("Gohar Xiters"), windowTitle.c_str(), WS_POPUP, 100, 100, 400, 300, NULL, NULL, wc.hInstance, NULL);
+    // Use Random Title for the actual Window (Convert to Wide String for UNICODE)
+    std::wstring wideTitle(windowTitle.begin(), windowTitle.end());
+    HWND hwnd = CreateWindow(_T("Gohar Xiters"), wideTitle.c_str(), WS_POPUP, 100, 100, 450, 400, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -189,15 +190,35 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             float yPos = 350.0f; // Adjusted for taller window
             for (auto it = GuiStyles::toasts.begin(); it != GuiStyles::toasts.end(); ) {
                 ImGui::SetNextWindowPos(ImVec2(20, yPos));
-                ImGui::SetNextWindowSize(ImVec2(250, 35));
+                ImGui::SetNextWindowSize(ImVec2(250, 40)); 
                 ImGui::Begin(("Toast" + it->message).c_str(), NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground);
-                ImGui::TextColored(ImVec4(0, 1, 1, 1), it->message.c_str()); // Blue Toast as requested
-                ImGui::End();
                 
-                yPos -= 40.0f;
+                // Draw Background & Left Border (Prompt 5)
+                ImDrawList* draw = ImGui::GetWindowDrawList();
+                ImVec2 p_min = ImGui::GetWindowPos();
+                ImVec2 p_max = ImVec2(p_min.x + 250, p_min.y + 40);
+                
+                // Dark Background
+                draw->AddRectFilled(p_min, p_max, IM_COL32(20, 20, 20, 240), 5.0f);
+                
+                // Left Glow Border (Blue or Red/Yellow based on type)
+                ImU32 borderCol = (it->type == 1) ? IM_COL32(0, 255, 255, 255) : IM_COL32(255, 50, 50, 255);
+                draw->AddRectFilled(p_min, ImVec2(p_min.x + 4, p_max.y), borderCol, 5.0f, ImDrawFlags_RoundCornersLeft);
+
+                // Text
+                ImGui::SetCursorPos(ImVec2(15, 12)); // Indent past border
+                ImGui::TextColored(ImVec4(1, 1, 1, 1), it->message.c_str());
+                
+                ImGui::End();
+
+                yPos -= 50.0f; // Stack Upwards
                 it->timer += ImGui::GetIO().DeltaTime;
-                if (it->timer > it->duration) it = GuiStyles::toasts.erase(it);
-                else ++it;
+                
+                if (it->timer > it->duration) {
+                    it = GuiStyles::toasts.erase(it);
+                } else {
+                    ++it;
+                }
             }
         }
         
@@ -241,8 +262,9 @@ void DragWindow(HWND hwnd)
     }
 }
 
-// Custom Toggle Button (Gohar Panel Style)
-// Renders: [ Label ........................... [ STATUS ] ]
+// Custom Toggle Button (Cyberpunk Style - Prompt 3)
+// Left: Label
+// Right: Neon Purple Toggle Switch
 bool ToggleButton(const char* label, bool* v)
 {
     ImVec2 p = ImGui::GetCursorScreenPos();
@@ -251,27 +273,38 @@ bool ToggleButton(const char* label, bool* v)
     float height = ImGui::GetFrameHeight();
     float width = ImGui::GetContentRegionAvail().x;
 
+    // Invisible Button catches the click
     ImGui::InvisibleButton(label, ImVec2(width, height));
-    if (ImGui::IsItemClicked())
+    bool clicked = ImGui::IsItemClicked();
+    if (clicked)
         *v = !*v;
 
-    // Colors
-    ImU32 text_col = *v ? IM_COL32(160, 32, 240, 255) : IM_COL32(100, 100, 100, 255); // Purple vs Grey
-    ImU32 status_col = *v ? IM_COL32(160, 32, 240, 255) : IM_COL32(80, 80, 80, 255);
-    const char* status_text = *v ? "[ ON  ]" : "[ OFF ]";
+    // --- RENDER ---
+    
+    // 1. Text Label (Left)
+    // Identify Hotkey vs Name based on bracket [ ]
+    // Assuming format "[ KEY ] Name"
+    ImU32 text_col = *v ? IM_COL32(255, 255, 255, 255) : IM_COL32(180, 180, 180, 255);
+    draw_list->AddText(ImVec2(p.x + 5, p.y + height/2 - 7), text_col, label);
 
-    // Draw Label
-    draw_list->AddText(ImVec2(p.x + 5, p.y + 2), text_col, label);
+    // 2. Toggle Switch (Right)
+    float switchW = 36.0f;
+    float switchH = 18.0f;
+    float switchX = p.x + width - switchW - 10;
+    float switchY = p.y + (height - switchH) / 2;
 
-    // Draw Status (Right Aligned)
-    float statusWidth = 60.0f; // Approx width of [ ON ]
-    draw_list->AddText(ImVec2(p.x + width - statusWidth, p.y + 2), status_col, status_text);
+    ImU32 switchBg = *v ? IM_COL32(160, 32, 240, 255) : IM_COL32(50, 50, 50, 255); // Neon Purple or Dark Grey
+    ImU32 knobCol = IM_COL32(255, 255, 255, 255);
+    
+    // Pill Body
+    draw_list->AddRectFilled(ImVec2(switchX, switchY), ImVec2(switchX + switchW, switchY + switchH), switchBg, switchH * 0.5f);
+    
+    // Knob
+    float knobR = switchH * 0.5f - 2;
+    float knobX = *v ? (switchX + switchW - knobR - 2) : (switchX + knobR + 2);
+    draw_list->AddCircleFilled(ImVec2(knobX, switchY + switchH * 0.5f), knobR, knobCol);
 
-    return *v; // Return true if state matches? No, standard returns current state usually, but Checkbox returns 'changed'.
-               // Here we return *v just for creating if condition, but standard ImGui::Checkbox returns true if CHANGED.
-               // My usage in main.cpp is: if (ToggleButton(...)) AddToast. So I should return 'hovered && clicked'.
-    // Fix return value to be 'Pressed'
-    return ImGui::IsItemClicked(); 
+    return clicked;
 }
 
 
