@@ -1,4 +1,7 @@
+#define _WIN32_WINNT 0x0601
 #include <Windows.h>
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
 #include <d3d11.h>
 #include <tchar.h>
 #include <iostream>
@@ -67,8 +70,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     UpdateWindow(hwnd);
 
     // DWM Transparency
-    #include <dwmapi.h>
-    #pragma comment(lib, "dwmapi.lib")
     MARGINS margins = { -1 };
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 
